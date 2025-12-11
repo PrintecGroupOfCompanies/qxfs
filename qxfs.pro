@@ -1,4 +1,8 @@
-include(../qxfsconfig.pri)
+CFGPRI=$$clean_path($$PWD/../qxfsconfig.pri)
+
+exists($$CFGPRI) {
+    include($$CFGPRI)
+}
 
 QT -= gui
 QT += network

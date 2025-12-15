@@ -22,7 +22,6 @@ SOURCES += \
     qxfsstream.cpp
 
 HEADERS += \
-    xfs_global.h \
     qxfssocketstream.h \
     qxfsstream.h \
 

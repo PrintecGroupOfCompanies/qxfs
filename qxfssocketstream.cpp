@@ -1,8 +1,13 @@
 #include <QDataStream>
 #include <QLocalSocket>
 #include <QSslSocket>
+#include <QSet>
+#include <QMutex>
 
 #include "qxfssocketstream.h"
+
+Q_GLOBAL_STATIC(QSet<QString>, warnOnce)
+Q_GLOBAL_STATIC(QMutex, warnOnceMutex)
 
 QIODevice *
 QXfsSocketStream::createSocket(const QString &deviceAddress,
@@ -156,8 +161,18 @@ QXfsSocketStream::connectToServer(QIODevice *io)
     return true;
 
 conn_err:
-    qWarning() << objectName() << " - unable to connect to device server: "
-               << errorString;
+    {
+        QMutexLocker lock(warnOnceMutex);
+        const auto &on {objectName()};
+
+        if (!warnOnce->contains(on))
+        {
+            warnOnce->insert(on);
+
+            qWarning() << on << " - unable to connect to device server: "
+                       << errorString;
+        }
+    }
 
     return false;
 }

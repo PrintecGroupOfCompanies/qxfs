@@ -101,7 +101,13 @@ QXfsStream::readyRead()
         if (!ds.commitTransaction())
             return;
 
-        emit message(msg);
+        /* delay signal emission until we re-enter the event loop, otherwise
+         * we may deadlock if someone calls a blocking function, like getInfo()
+         */
+        QMetaObject::invokeMethod(this, [this, msg]
+        {
+            emit message(msg);
+        }, Qt::QueuedConnection);
     }
 }
 

@@ -218,6 +218,40 @@ QXfsStream::execute(const QString &dwCommand, const QVariant &lpCmdData)
     return msgid;
 }
 
+QVariantMap
+QXfsStream::syncExecute(const QString &cmd, const QVariant &cmdData)
+{
+    QVariantMap rv;
+    QEventLoop loop;
+    QString msgid;
+    QMetaObject::Connection c = connect(this, &QXfsStream::executeComplete,
+                                        [&](const QVariantMap &msg)
+    {
+        if (msg["msgid"] != msgid)
+            return;
+
+        const auto &hResult = msg["hResult"];
+
+        loop.exit();
+        rv = msg;
+
+        if (hResult != "WFS_SUCCESS")
+        {
+            qWarning() << objectName() << " - " << cmd
+                       << "command failed with " << hResult.toString();
+        }
+    });
+
+    msgid = execute(cmd, cmdData);
+
+    if (!msgid.isEmpty())
+        loop.exec();
+
+    QObject::disconnect(c);
+
+    return rv;
+}
+
 QString
 QXfsStream::send(const QString &function, const QString &dwCommand,
                     const QVariant &lpCmdData)

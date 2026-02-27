@@ -65,6 +65,14 @@ public:
                                 const QVariant &lpCmdData = QVariant());
 
     /**
+     * @brief Synchronously executes a device command.
+     *
+     * Same as execute(), but runs local event loop until command finishes.
+     */
+    Q_INVOKABLE QVariantMap syncExecute(
+            const QString &cmd, const QVariant &cmdData = QVariant());
+
+    /**
      * @brief Requests cancellation of a previously issued command.
      *
      * @param reqMsgId Request id returned by execute(). If empty, a best-

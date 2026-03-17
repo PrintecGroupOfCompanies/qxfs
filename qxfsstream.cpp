@@ -3,6 +3,7 @@
 #include <QMutex>
 #include <QUuid>
 #include <QDebug>
+#include <QThread>
 
 #include "qxfsstream.h"
 
@@ -256,6 +257,8 @@ QString
 QXfsStream::send(const QString &function, const QString &dwCommand,
                     const QVariant &lpCmdData)
 {
+    Q_ASSERT(m_io->thread() == QThread::currentThread());
+
     if (!connectToServer(m_io))
         return QString();
 

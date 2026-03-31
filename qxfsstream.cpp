@@ -270,7 +270,7 @@ QXfsStream::send(const QString &function, const QString &dwCommand,
     {
         {"dwCommand", dwCommand},
         {"function", function},
-        {"lpCmdData", lpCmdData},
+        {"lpCmdData", lpCmdData.toMap()},
         {"msgid", msgid}
     };
     ds << cmd;

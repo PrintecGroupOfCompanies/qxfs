@@ -24,3 +24,12 @@ SOURCES += \
 HEADERS += \
     qxfssocketstream.h \
     qxfsstream.h \
+
+
+msvc {
+    QMAKE_CFLAGS_RELEASE += /Zi
+    QMAKE_CXXFLAGS_RELEASE += /Zi
+
+    # For the linker:
+    QMAKE_LFLAGS_RELEASE += /DEBUG /OPT:REF /OPT:ICF
+}

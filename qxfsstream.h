@@ -2,6 +2,8 @@
 #define QXFSSTREAM_H
 
 #include <QIODevice>
+#include <QMutex>
+#include <QSharedPointer>
 #include <QVariantMap>
 
 #include "qxfs_global.h"
@@ -26,6 +28,12 @@ class QXFS_EXPORT QXfsStream : public QObject
     Q_OBJECT
 
 public:
+    typedef struct
+    {
+        QMutex m_mutex;
+        QXfsStream *m_device;
+    } DeviceEntry;
+    using DeviceEntryPtr = QSharedPointer<DeviceEntry>;
 
     /**
      * @brief Constructs a device proxy bound to a device class id.
@@ -222,6 +230,9 @@ private:
      * Reduces repeated backend calls for shared, immutable capability data.
      */
     static QMap<QString, QVariantMap> m_capabilities;
+
+    /** Back reference in the global devices list */
+    DeviceEntryPtr m_self;
 
 private slots:
 

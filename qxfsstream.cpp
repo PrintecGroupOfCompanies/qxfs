@@ -22,7 +22,7 @@ Q_GLOBAL_STATIC(QMutex, deviceMutex)
 /**
  * @brief Global list of all QXfsStream instances.
  */
-Q_GLOBAL_STATIC(QList<QXfsStream *>, devices)
+Q_GLOBAL_STATIC(QList<QXfsStream::DeviceEntryPtr>, devices)
 
 QXfsStream::QXfsStream(QIODevice *io,
                        const QString &deviceId,
@@ -36,9 +36,14 @@ QXfsStream::QXfsStream(QIODevice *io,
 
     setObjectName(deviceId);
 
+    DeviceEntryPtr e(new DeviceEntry);
+
+    e->m_device = this;
+    m_self = e;
+
     {
         QMutexLocker lock(deviceMutex);
-        devices->append(this);
+        devices->append(e);
     }
 
     m_statusCategory = "WFS_INF_" + m_strClass + "_STATUS";
@@ -81,10 +86,14 @@ QXfsStream::QXfsStream(QIODevice *io,
 
 QXfsStream::~QXfsStream()
 {
+    if (m_self)
     {
-        QMutexLocker lock(deviceMutex);
-        devices->removeOne(this);
+        QMutexLocker lock(&m_self->m_mutex);
+        m_self->m_device = nullptr;
     }
+
+    QMutexLocker lock(deviceMutex);
+    devices->removeOne(m_self);
 }
 
 void
@@ -172,15 +181,20 @@ QXfsStream::execute(const QString &dwCommand, const QVariant &lpCmdData)
             return;
 
         {
-            QMutexLocker lock(deviceMutex);
+            QList<QXfsStream::DeviceEntryPtr> entries;
 
-            foreach (QXfsStream *device, *devices)
             {
-                if (device->objectName() == objectName())
-                {
-                    emit device->executeEventBroadcasted(
-                        msg, dwCommand, lpCmdData);
-                }
+                QMutexLocker lock(deviceMutex);
+                entries = *devices;
+            }
+
+            for (const auto &e : entries)
+            {
+                QMutexLocker lock(&e->m_mutex);
+                const auto d = e->m_device;
+
+                if (d && d->objectName() == objectName())
+                    emit d->executeEventBroadcasted(msg, dwCommand, lpCmdData);
             }
         }
 

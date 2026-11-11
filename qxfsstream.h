@@ -316,23 +316,39 @@ signals:
 
 private:
     /**
-     * @brief Returns the command currently at the head of the queue.
+     * @brief Returns the oldest acknowledged pending command.
      *
-     * @return QPair&lt;QString, QVariant&gt; The command id and payload.
+     * Used to associate unsolicited events (e.g. WFS_SYSTEM_EVENT) with
+     * the command the device is processing; the XFS manager serializes
+     * execute commands, so the oldest pending one is the active one.
+     *
+     * @return QPair&lt;QString, QVariant&gt; The command code and payload,
+     *         or an empty pair when no command is pending.
      */
     QPair<QString, QVariant> currentCommand() const;
 
     /**
-     * @brief Appends a command to the pending queue.
+     * @brief Registers an acknowledged command as pending on this device.
      *
-     * @param cmd Pair of command id and payload.
+     * Called when the backend acknowledges an execute command (reply
+     * without a message field).
+     *
+     * @param msgId Request id of the acknowledged command.
+     * @param cmd Pair of command code and payload.
      */
-    void appendCommand(const QPair<QString, QVariant> &cmd) const;
+    void appendCommand(const QString &msgId,
+                       const QPair<QString, QVariant> &cmd) const;
 
     /**
-     * @brief Completes and removes the current command from the queue.
+     * @brief Removes the pending command associated with a request.
+     *
+     * Removes the first entry whose stored request id matches @p msgId.
+     * Silently does nothing when no entry matches (e.g. for info or
+     * cancel requests, which are never queued).
+     *
+     * @param msgId Request id of the completed command.
      */
-    void finishCommand() const;
+    void finishCommand(const QString &msgId) const;
 
     /**
      * @brief Low-level send routine for commands and data.

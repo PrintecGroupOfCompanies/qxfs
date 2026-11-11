@@ -122,14 +122,33 @@ QXfsStream::readyRead()
 }
 
 /**
- * @typedef QJsCommandMap
- * @brief Map storing commands per device.
+ * @struct QPendingCommand
+ * @brief An acknowledged command awaiting completion on a device.
  *
- * Key: device object name.
- * Value: list of command pairs <dwCommand, lpCmdData>.
+ * @var QPendingCommand::id
+ * Request id (msgid) of the command, used to remove the entry when the
+ * corresponding completion or error response arrives.
+ * @var QPendingCommand::command
+ * The <dwCommand, lpCmdData> pair, reported as the context of unsolicited
+ * events (e.g. WFS_SYSTEM_EVENT) referring to this command.
  */
-using QJsCommandMap = QMap<QString, QList<QPair<QString, QVariant>>>;
-Q_GLOBAL_STATIC(QJsCommandMap, commands);
+struct QPendingCommand
+{
+    QString id;
+    QPair <QString, QVariant> command;
+};
+
+/**
+ * @typedef QPendingCommandMap
+ * @brief Map storing pending commands per device.
+ *
+ * Key: device object name (device id, shared by all streams of one device).
+ * Value: list of acknowledged but not yet completed commands, each holding
+ * the request msg id used for removal and the <dwCommand, lpCmdData> pair
+ * reported with unsolicited system events.
+ */
+using QPendingCommandMap = QMap<QString, QList<QPendingCommand>>;
+Q_GLOBAL_STATIC(QPendingCommandMap, commands)
 
 /**
  * @brief Mutex protecting command map.
@@ -142,26 +161,34 @@ QXfsStream::currentCommand() const
     QMutexLocker lock(commandMutex);
 
     if (!(*commands)[objectName()].isEmpty())
-        return (*commands)[objectName()].first();
+        return (*commands)[objectName()].first().command;
 
     return {QString(), QVariant()};
 }
 
 void
-QXfsStream::appendCommand(const QPair<QString, QVariant> &cmd) const
+QXfsStream::appendCommand(const QString &msgId,
+                          const QPair<QString, QVariant> &cmd) const
 {
     QMutexLocker lock(commandMutex);
 
-    (*commands)[objectName()].append(cmd);
+    (*commands)[objectName()].append({msgId, cmd});
 }
 
 void
-QXfsStream::finishCommand() const
+QXfsStream::finishCommand(const QString &msgId) const
 {
     QMutexLocker lock(commandMutex);
+    auto &cmds = (*commands)[objectName()];
 
-    if (!(*commands)[objectName()].isEmpty())
-        (*commands)[objectName()].removeFirst();
+    for (auto it = cmds.begin(); it != cmds.end(); ++it)
+    {
+        if (it->id == msgId)
+        {
+            cmds.erase(it);
+            break;
+        }
+    }
 }
 
 QString
@@ -218,7 +245,7 @@ QXfsStream::execute(const QString &dwCommand, const QVariant &lpCmdData)
             else
             {
                 Q_ASSERT(dwCommand == msg["dwCommandCode"]);
-                appendCommand({dwCommand, lpCmdData});
+                appendCommand(msgid, {dwCommand, lpCmdData});
             }
         }
         else
@@ -297,7 +324,7 @@ QXfsStream::send(const QString &function, const QString &dwCommand,
 void
 QXfsStream::done(const QString &msgid)
 {
-    finishCommand();
+    finishCommand(msgid);
     m_pending.remove(msgid);
 }
 

@@ -207,6 +207,11 @@ QXfsStream::execute(const QString &dwCommand, const QVariant &lpCmdData)
         if (msg["msgid"] != msgid)
             return;
 
+        /* executeEvent callbacks could call GET_INFO commands that result in
+         * system events unrelated to current command, so drop last command */
+        if (msg.value("message") == "WFS_EXECUTE_COMPLETE")
+            finishCommand(msgid);
+
         {
             QList<QXfsStream::DeviceEntryPtr> entries;
 

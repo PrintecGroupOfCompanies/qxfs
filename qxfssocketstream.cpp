@@ -5,6 +5,7 @@
 #include <QMutex>
 
 #include "qxfssocketstream.h"
+#include "qlocalipc.h"
 
 Q_GLOBAL_STATIC(QSet<QString>, warnOnce)
 Q_GLOBAL_STATIC(QMutex, warnOnceMutex)
@@ -119,6 +120,12 @@ QXfsSocketStream::connectToServer(QIODevice *io)
                 errorString = socket->errorString();
                 goto conn_err;
             }
+        }
+
+        if (!QLocalIpc::serverIsCurrentUser(socket))
+        {
+            errorString = "server process runs as a foreign user";
+            goto conn_err;
         }
     }
     else

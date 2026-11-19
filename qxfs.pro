@@ -15,6 +15,9 @@ DEPENDPATH += $$INCLUDES
 TEMPLATE = lib
 DEFINES += QXFS_LIBRARY
 
+# advapi32 for the token queries in qlocalipc.h
+win32:LIBS += -ladvapi32
+
 CONFIG += c++11
 
 SOURCES += \
@@ -22,6 +25,7 @@ SOURCES += \
     qxfsstream.cpp
 
 HEADERS += \
+    qlocalipc.h \
     qxfssocketstream.h \
     qxfsstream.h \
 

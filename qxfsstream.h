@@ -194,6 +194,18 @@ protected:
      */
     virtual bool connectToServer(QIODevice *) {return true;}
 
+    /**
+     * @brief Checks that the peer is trusted before messages are
+     * exchanged.
+     *
+     * Called on incoming data and before sending. The default trusts
+     * the peer; implementations that can identify the peer override
+     * it and return false when the peer must not be trusted, e.g.
+     * when its identity can not be obtained. The connection is then
+     * closed and no message is dispatched.
+     */
+    virtual bool peerIsTrusted(QIODevice *) {return true;}
+
 private:
     /**
      * @brief The underlying I/O transport. Typically a QLocalSocket or SSL.

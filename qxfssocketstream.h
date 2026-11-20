@@ -23,6 +23,15 @@ protected:
      */
     virtual bool connectToServer(QIODevice *io);
 
+    /**
+     * @brief Checks that a local device server runs as the current
+     * user.
+     *
+     * The check is performed once per connection, before received
+     * messages are dispatched or a request is sent.
+     */
+    virtual bool peerIsTrusted(QIODevice *io);
+
 protected slots:
     /**
      * @brief Slot invoked when the socket disconnects.
@@ -46,6 +55,12 @@ private:
      * @brief True if the connection target is local (QLocalSocket).
      */
     bool m_isLocal;
+
+    /**
+     * @brief True once the local server has been verified, reset on
+     * disconnect.
+     */
+    bool m_verified;
 
     /**
      * @brief True if SSL/TLS is negotiated for the connection.

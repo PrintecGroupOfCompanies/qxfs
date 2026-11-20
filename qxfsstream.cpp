@@ -99,6 +99,12 @@ QXfsStream::~QXfsStream()
 void
 QXfsStream::readyRead()
 {
+    if (!peerIsTrusted(m_io))
+    {
+        m_io->close();
+        return;
+    }
+
     for (;;)
     {
         QVariantMap msg;

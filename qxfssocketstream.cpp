@@ -74,7 +74,8 @@ QXfsSocketStream::QXfsSocketStream(const QString &deviceAddress,
                                    const QString &strClass,
                                    QObject *parent) :
     QXfsStream(createSocket(deviceAddress, deviceId), deviceId, strClass,
-               parent)
+               parent),
+    m_verified(false)
 {
     connect(m_socket, SIGNAL(disconnected()), SLOT(disconnected()));
 }
@@ -89,6 +90,8 @@ QXfsSocketStream::~QXfsSocketStream()
 void
 QXfsSocketStream::disconnected()
 {
+    m_verified = false;
+
     QMap<QString, QString> commands = pending();
     QMap<QString, QString>::const_iterator it;
     QVariantMap msg = {{"hResult", "WFS_ERR_CONNECTION_LOST"}};
@@ -100,6 +103,33 @@ QXfsSocketStream::disconnected()
 
         emit message(msg);
     }
+}
+
+/*
+ * A local device server is trusted once its process is known to run as
+ * the current user. The identity comes from the operating system, so
+ * when it can not be obtained the server is not trusted either.
+ */
+bool
+QXfsSocketStream::peerIsTrusted(QIODevice *io)
+{
+    if (!m_isLocal || m_verified)
+        return true;
+
+    QLocalSocket *socket = static_cast<QLocalSocket *>(io);
+
+    if (!QLocalIpc::serverIsCurrentUser(socket))
+    {
+        qWarning() << objectName()
+                   << " - device server is not the current user or its"
+                      " identity can not be obtained";
+
+        return false;
+    }
+
+    m_verified = true;
+
+    return true;
 }
 
 bool
@@ -122,10 +152,10 @@ QXfsSocketStream::connectToServer(QIODevice *io)
             }
         }
 
-        if (!QLocalIpc::serverIsCurrentUser(socket))
+        if (!peerIsTrusted(socket))
         {
-            errorString = "server process runs as a foreign user";
-            goto conn_err;
+            socket->disconnectFromServer();
+            return false;
         }
     }
     else
